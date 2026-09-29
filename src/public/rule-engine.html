@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Return CAGR Rule Engine — AMFI NAV Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+  <link rel="stylesheet" href="/css/rule-engine.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="re-body">
+
+  <div class="re-page">
+
+    <!-- Header -->
+    <div class="re-header">
+      <div>
+        <a href="/" class="re-back">← Back to Dashboard</a>
+        <h1>Return CAGR Rule Engine</h1>
+        <p>Configure filters, logic and selection rules for SIP &amp; Lumpsum.</p>
+      </div>
+      <div class="re-last-updated">🕐 Last Updated: <span id="reLastUpdated">—</span></div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="re-cards" id="reSummaryCards">
+      <div class="re-card">
+        <div class="re-card-icon re-icon-purple">🧮</div>
+        <div class="re-card-body">
+          <div class="re-card-label">Filters Applied</div>
+          <div class="re-card-value" id="reCardFilters">0</div>
+          <div class="re-card-sub">Active</div>
+        </div>
+      </div>
+      <div class="re-card">
+        <div class="re-card-icon re-icon-green">📗</div>
+        <div class="re-card-body">
+          <div class="re-card-label">Return CAGR</div>
+          <div class="re-card-value re-card-value-sm" id="reCardCagrStatus">Enabled</div>
+          <div class="re-card-sub">Status</div>
+        </div>
+      </div>
+      <div class="re-card">
+        <div class="re-card-icon re-icon-orange">📈</div>
+        <div class="re-card-body">
+          <div class="re-card-label">Rolling Returns</div>
+          <div class="re-card-value re-card-value-sm" id="reCardRollingStatus">Enabled</div>
+          <div class="re-card-sub">Status</div>
+        </div>
+      </div>
+      <div class="re-card">
+        <div class="re-card-icon re-icon-blue">☑</div>
+        <div class="re-card-body">
+          <div class="re-card-label">Schemes Found</div>
+          <div class="re-card-value" id="reCardSchemesFound">—</div>
+          <div class="re-card-sub">Total</div>
+        </div>
+      </div>
+      <div class="re-card">
+        <div class="re-card-icon re-icon-blue">📈</div>
+        <div class="re-card-body">
+          <div class="re-card-label">SIP Amount</div>
+          <div class="re-card-value re-card-value-sm" id="reCardSipAmount">₹5,000</div>
+          <div class="re-card-sub">Monthly</div>
+        </div>
+      </div>
+      <div class="re-card">
+        <div class="re-card-icon re-icon-purple">🎁</div>
+        <div class="re-card-body">
+          <div class="re-card-label">Lumpsum Amount</div>
+          <div class="re-card-value re-card-value-sm" id="reCardLumpsumAmount">₹50,000</div>
+          <div class="re-card-sub">One Time</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="re-panel">
+      <div class="re-panel-title">▽ Filters</div>
+      <div class="re-filters-row">
+        <div class="re-filter-group re-filter-wide">
+          <label>Search Scheme</label>
+          <input type="text" id="reFilterSearch" placeholder="Search by scheme name…"/>
+        </div>
+        <div class="re-filter-group">
+          <label>AMC</label>
+          <select id="reFilterAmc"><option value="">All</option></select>
+        </div>
+        <div class="re-filter-group">
+          <label>Category</label>
+          <select id="reFilterCategory"><option value="">All</option></select>
+        </div>
+        <div class="re-filter-group">
+          <label>Type</label>
+          <select id="reFilterType"><option value="">All</option></select>
+        </div>
+        <div class="re-filter-group">
+          <label>Option</label>
+          <select id="reFilterOption"><option value="">All</option></select>
+        </div>
+        <div class="re-filter-check">
+          <label><input type="checkbox" id="reHideNoLaunch" checked/> Hide schemes without a launch date</label>
+        </div>
+        <button class="re-btn re-btn-primary" id="reApplyFilters">▽ Apply Filters</button>
+      </div>
+
+      <div class="re-filters-row" style="margin-top:10px;">
+        <div class="re-filter-group">
+          <label>Std.Dev</label>
+          <select id="reStdDevBucket">
+            <option value="">All</option>
+            <option value="lt5">&lt; 5%</option>
+            <option value="5-10">5 – 10%</option>
+            <option value="10-15">10 – 15%</option>
+            <option value="15-20">15 – 20%</option>
+            <option value="gte20">20%+</option>
+          </select>
+        </div>
+        <div class="re-filter-group">
+          <label>Beta</label>
+          <select id="reBetaBucket">
+            <option value="">All</option>
+            <option value="lt0.8">&lt; 0.8 (defensive)</option>
+            <option value="0.8-1.0">0.8 – 1.0</option>
+            <option value="1.0-1.2">1.0 – 1.2</option>
+            <option value="gte1.2">1.2+ (aggressive)</option>
+          </select>
+        </div>
+        <div class="re-filter-group">
+          <label>Sharpe</label>
+          <select id="reSharpeBucket">
+            <option value="">All</option>
+            <option value="lt0">&lt; 0</option>
+            <option value="0-1">0 – 1</option>
+            <option value="1-2">1 – 2</option>
+            <option value="gte2">2+</option>
+          </select>
+        </div>
+        <div class="re-filter-group">
+          <label>Jensen</label>
+          <select id="reJensenBucket">
+            <option value="">All</option>
+            <option value="lt0">&lt; 0% (negative alpha)</option>
+            <option value="0-2">0 – 2%</option>
+            <option value="2-5">2 – 5%</option>
+            <option value="gte5">5%+</option>
+          </select>
+        </div>
+        <div class="re-filter-group">
+          <label>Large Cap (%)</label>
+          <select id="reLargeCapBucket">
+            <option value="">All</option>
+            <option value="0-25">0 - 25</option>
+            <option value="25-50">25 - 50</option>
+            <option value="50-75">50 - 75</option>
+            <option value="75-100">75 - 100</option>
+          </select>
+        </div>
+        <div class="re-filter-group">
+          <label>Mid Cap (%)</label>
+          <select id="reMidCapBucket">
+            <option value="">All</option>
+            <option value="0-25">0 - 25</option>
+            <option value="25-50">25 - 50</option>
+            <option value="50-75">50 - 75</option>
+            <option value="75-100">75 - 100</option>
+          </select>
+        </div>
+        <div class="re-filter-group">
+          <label>Small Cap (%)</label>
+          <select id="reSmallCapBucket">
+            <option value="">All</option>
+            <option value="0-25">0 - 25</option>
+            <option value="25-50">25 - 50</option>
+            <option value="50-75">50 - 75</option>
+            <option value="75-100">75 - 100</option>
+          </select>
+        </div>
+        <div class="re-filter-group">
+          <label>Cash (%)</label>
+          <select id="reCashBucket">
+            <option value="">All</option>
+            <option value="0-25">0 - 25</option>
+            <option value="25-50">25 - 50</option>
+            <option value="50-75">50 - 75</option>
+            <option value="75-100">75 - 100</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SIP + Lumpsum logic -->
+    <div class="re-logic-row">
+      <div class="re-panel re-panel-sip">
+        <div class="re-panel-title re-title-green">📈 SIP Selection Logic</div>
+        <div class="re-logic-grid">
+          <div class="re-filter-group">
+            <label>Set Your SIP Amount</label>
+            <input type="number" id="reSipAmount" value="5000" min="100" step="100"/>
+          </div>
+          <div class="re-filter-group">
+            <label>Frequency</label>
+            <select id="reSipFrequency">
+              <option>Monthly</option>
+              <option>Weekly</option>
+              <option>Quarterly</option>
+            </select>
+          </div>
+          <div class="re-filter-group">
+            <label>Evaluation Period</label>
+            <select id="reSipEvalPeriod"><option>All Periods</option></select>
+          </div>
+          <div class="re-filter-group">
+            <label>Minimum Return (%)</label>
+            <input type="number" id="reSipMinReturn" placeholder="e.g. 12"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="re-panel re-panel-lumpsum">
+        <div class="re-panel-title re-title-purple">🎁 Lumpsum Selection Logic</div>
+        <div class="re-logic-grid">
+          <div class="re-filter-group">
+            <label>Set Your Lumpsum Amount</label>
+            <input type="number" id="reLumpsumAmount" value="50000" min="1000" step="1000"/>
+          </div>
+          <div class="re-filter-group">
+            <label>Investment Type</label>
+            <select id="reLumpsumType"><option>One Time</option></select>
+          </div>
+          <div class="re-filter-group">
+            <label>Evaluation Period</label>
+            <select id="reLumpsumEvalPeriod"><option>All Periods</option></select>
+          </div>
+          <div class="re-filter-group">
+            <label>Minimum Return (%)</label>
+            <input type="number" id="reLumpsumMinReturn" placeholder="e.g. 12"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance table -->
+    <div class="re-panel">
+      <div class="re-perf-header">
+        <div class="re-panel-title">📊 Performance Overview <span class="re-perf-sub">(All Returns in %)</span></div>
+        <div class="re-perf-actions">
+          <button class="re-toggle-btn re-toggle-active" id="reViewCagr">Return CAGR</button>
+          <button class="re-toggle-btn" id="reViewRolling">Rolling Returns</button>
+          <button class="re-btn re-btn-outline" id="reExportBtn">⬇ Export</button>
+        </div>
+      </div>
+
+      <div class="re-table-wrap">
+        <table class="re-table" id="reTable">
+          <thead id="reTableHead"></thead>
+          <tbody id="reTableBody">
+            <tr><td class="re-empty" colspan="20">Set your filters and click "Apply Filters" to run the engine.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="re-table-footer">
+        <div class="re-showing" id="reShowingText"></div>
+        <div class="re-pagination" id="rePagination"></div>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="re-about">
+      <div class="re-about-text">
+        <div class="re-about-title">ⓘ About the Metrics</div>
+        <div class="re-about-grid">
+          <div><b>Return CAGR:</b> Annualized growth rate over the selected period for SIP and Lumpsum investments.</div>
+          <div><b>Rolling Returns:</b> CAGR calculated for rolling windows of different time periods.</div>
+        </div>
+      </div>
+      <div class="re-formula">
+        <div class="re-formula-eq">
+          CAGR&nbsp;=&nbsp;
+          <span class="re-frac"><span class="re-frac-top">End Value</span><span class="re-frac-bottom">Start Value</span></span>
+          <sup>1/n</sup> − 1 × 100
+        </div>
+        <div class="re-formula-note">Where n = number of years<br/>Returns are in % (annualized)</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/js/rule-engine.js"></script>
+</body>
+</html>

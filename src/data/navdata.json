@@ -1,0 +1,29 @@
+{
+  "funds": [
+    {
+      "name": "SBI Mutual Fund",
+      "count": 0,
+      "schemes": []
+    },
+    {
+      "name": "HDFC Mutual Fund",
+      "count": 0,
+      "schemes": []
+    },
+    {
+      "name": "ICICI Prudential Mutual Fund",
+      "count": 0,
+      "schemes": []
+    },
+    {
+      "name": "Axis Mutual Fund",
+      "count": 0,
+      "schemes": []
+    },
+    {
+      "name": "Kotak Mahindra Mutual Fund",
+      "count": 0,
+      "schemes": []
+    }
+  ]
+}

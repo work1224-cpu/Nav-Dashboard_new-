@@ -1,0 +1,16 @@
+{
+  "watch": [
+    "src"
+  ],
+  "ignore": [
+    "data/returns-cache.json",
+    "data/users.json",
+    "data/sessions.json",
+    "src/nav-ledger/data/master.json",
+    "src/nav-ledger/data/meta.json",
+    "src/nav-ledger/data/returns-cache.json",
+    "src/nav-ledger/data/returns-cache.json.tmp",
+    "src/nav-ledger/data/calendar-cache.json",
+    "src/nav-ledger/data/calendar-cache.json.tmp"
+  ]
+}

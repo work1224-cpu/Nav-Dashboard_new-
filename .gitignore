@@ -1,0 +1,19 @@
+node_modules/
+.env
+
+# Local authentication and session state
+data/sessions.json
+data/users.json
+data/users.json.bak
+
+# Local databases and generated caches
+data/*.sqlite
+data/*.sqlite-*
+data/returns-cache.json
+src/nav-ledger/data/master.json
+src/nav-ledger/data/returns-cache.json
+src/nav-ledger/data/calendar-cache.json
+src/nav-ledger/data/*.tmp
+
+# Local archive
+Nav_Dashboard.rar

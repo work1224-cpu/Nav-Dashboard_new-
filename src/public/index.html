@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AMFI NAV Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+  <style>
+    /* Return CAGR / Rolling Return period pickers (Home dashboard): fixed compact
+       width instead of the default .filter-group flex:1, which stretched each
+       one across half the screen. Fits labels like "All Periods" / "10Y". */
+    .filter-group--period { flex: 0 0 120px; min-width: 0; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- USER BADGE (top-right, fixed) -->
+  <div class="user-badge" id="userBadge">
+    <div class="user-badge-avatar" id="userBadgeAvatar">…</div>
+    <div class="user-badge-info">
+      <div class="user-badge-name" id="userBadgeName">Loading…</div>
+      <div class="user-badge-role" id="userBadgeRole"></div>
+    </div>
+    <a class="user-badge-admin-link hidden" id="userBadgeAdminLink" href="/admin" title="Admin Console">⚙</a>
+    <button class="user-badge-logout" id="userBadgeLogout" title="Log out">⎋</button>
+  </div>
+
+  <!-- SYNC BAR (top-left, fixed) — pre-computed Returns / Rolling Returns -->
+  <div class="sync-bar" id="syncBar">
+    <button class="sync-btn sync-btn-primary" id="syncNowBtn" onclick="startFullSync()" title="Calculate & save Returns + Rolling Returns for every scheme">
+      <span class="sync-btn-icon">🔄</span><span id="syncNowLabel">Sync</span>
+    </button>
+    <button class="sync-btn sync-btn-secondary" id="oldSyncBtn" onclick="toggleOldSyncMode()" title="Show last saved data (works even if the live API is down)">
+      <span class="sync-btn-icon">🕓</span><span>Old Sync</span>
+    </button>
+    <div class="sync-status" id="syncStatusText">Checking sync status…</div>
+  </div>
+  <div class="old-sync-banner hidden" id="oldSyncBanner">
+    📦 Showing last saved data (Old Sync mode) — click "Old Sync" again to go live.
+  </div>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Top-center brand link back Home (shown on every dashboard except Home itself) -->
+    <div class="top-home-nav hidden" id="topHomeNav">
+      <a href="/" onclick="goHome(); return false;" title="Go to Home">
+        <span class="top-home-nav-icon">₹</span>NAV Dashboard
+      </a>
+    </div>
+
+    <!-- Welcome -->
+    <div class="welcome" id="welcome">
+      <div id="homeHero">
+        <div class="welcome-icon">₹</div>
+        <h1>AMFI Mutual Fund NAV Explorer</h1>
+        <p>Browse all schemes below, or narrow down by AMC and filters.</p>
+        <div class="welcome-stats" id="welcomeStats"></div>
+      </div>
+
+      <!-- Dashboard index — the 5 destinations this project covers. -->
+      <div class="dashboard-index" id="dashboardIndexGrid">
+        <button class="dash-tile dash-tile--calendar" onclick="openCalendarYearView()">
+          <span class="dash-tile-icon">📅</span>
+          <span class="dash-tile-title">CAGR Return, Rolling Return</span>
+          <span class="dash-tile-desc">AMFI NAV history, Returns (CAGR) and Rolling Returns for every scheme</span>
+        </button>
+        <button class="dash-tile dash-tile--calcagr" onclick="openCalendarCagrDashboard()">
+          <span class="dash-tile-icon">📆</span>
+          <span class="dash-tile-title">Calendar Year CAGR &amp; Rolling Return</span>
+          <span class="dash-tile-desc">Year-by-year CAGR and Rolling Return, calculated from api.mfapi.in daily NAV history</span>
+        </button>
+        <button class="dash-tile dash-tile--calsip" onclick="openCalendarSipDashboard()">
+          <span class="dash-tile-icon">🧾</span>
+          <span class="dash-tile-title">Calendar Year SIP &amp; Lumpsum</span>
+          <span class="dash-tile-desc">SIP and Lumpsum returns for each calendar year (Jan–Dec), calculated from api.mfapi.in</span>
+        </button>
+        <button class="dash-tile dash-tile--foreign" onclick="openVanguardDashboard()">
+          <span class="dash-tile-icon">🌐</span>
+          <span class="dash-tile-title">Foreign Returns</span>
+          <span class="dash-tile-desc">Vanguard mutual fund returns</span>
+        </button>
+        <button class="dash-tile dash-tile--ipo" onclick="openUpvalyDashboard()">
+          <span class="dash-tile-icon">🚀</span>
+          <span class="dash-tile-title">IPO's</span>
+          <span class="dash-tile-desc">Upvaly Dashboard — IPOs &amp; exchange holidays</span>
+        </button>
+        <button class="dash-tile dash-tile--sip" onclick="openRuleEngineDashboard()">
+          <span class="dash-tile-icon">🧮</span>
+          <span class="dash-tile-title">SIP &amp; Lumpsum</span>
+          <span class="dash-tile-desc">Rule Engine — CAGR &amp; Rolling Returns screener</span>
+        </button>
+      </div>
+
+      <!-- Calendar Year view (hidden until its tile is clicked) — this is
+           everything that used to sit directly on the Home page: the AMC
+           + scheme filters, the Excel export, and the schemes table. -->
+      <div class="calendar-year-view hidden" id="calendarYearView">
+        <div class="calendar-year-view-topbar">
+          <button class="btn-back-to-index" onclick="closeCalendarYearView()">← Back to Dashboards</button>
+          <button class="btn-close-view" onclick="closeCalendarYearView()" title="Close" aria-label="Close">✕ Close</button>
+        </div>
+
+        <!-- Welcome actions -->
+        <div class="welcome-actions">
+          <button class="btn-download-all" id="welcomeBtnDownloadAll">⬇ Download All Filtered Schemes (Excel)</button>
+        </div>
+      
+        <!-- Welcome page filters -->
+        <div class="welcome-filters" id="welcomeFilters">
+          <div class="filters-bar">
+            <div class="filters-row">
+              <div class="filter-group filter-wide">
+                <label>Scheme Name</label>
+                <input type="text" id="welcomeFilterSearch" placeholder="e.g. Growth, Direct, IDCW…"/>
+              </div>
+              <div class="filter-group">
+                <label>Scheme Code</label>
+                <input type="text" id="welcomeFilterCode" placeholder="e.g. 119551"/>
+              </div>
+              <div class="filter-group">
+                <label>Min NAV (₹)</label>
+                <input type="number" id="welcomeFilterMinNav" placeholder="0" min="0"/>
+              </div>
+              <div class="filter-group">
+                <label>Max NAV (₹)</label>
+                <input type="number" id="welcomeFilterMaxNav" placeholder="Any" min="0"/>
+              </div>
+              <div class="filter-group filter-group--period">
+                <label>Return CAGR</label>
+                <select id="welcomeFilterCagrPeriod"><option value="">All Periods</option></select>
+              </div>
+              <div class="filter-group filter-group--period">
+                <label>Rolling Return</label>
+                <select id="welcomeFilterRollingPeriod"><option value="">All Periods</option></select>
+              </div>
+            </div>
+            <div class="filters-row">
+              <div class="filter-group">
+                <label>AMC (Fund House)</label>
+                <select id="welcomeFilterFundHouse"><option value="">All AMCs</option></select>
+              </div>
+              <div class="filter-group">
+                <label>Scheme Type</label>
+                <select id="welcomeFilterSchemeType"><option value="">All Types</option></select>
+              </div>
+              <div class="filter-group">
+                <label>Plan</label>
+                <select id="welcomeFilterPlan"><option value="">All Plans</option></select>
+              </div>
+              <div class="filter-group">
+                <label>Option</label>
+                <select id="welcomeFilterOption"><option value="">All Options</option></select>
+              </div>
+            <div class="filter-group filter-wide">
+              <label>Category</label>
+              <select id="welcomeFilterCategory"><option value="">All Categories</option></select>
+            </div>
+            <div class="filter-group">
+              <label>Industry</label>
+              <select id="welcomeFilterIndustry"><option value="">All Industries</option></select>
+            </div>
+            <div class="filter-group">
+              <label>Sort By</label>
+              <select id="welcomeFilterSort">
+                <option value="">Default</option>
+                <option value="nav_desc">NAV: High → Low</option>
+                <option value="nav_asc">NAV: Low → High</option>
+                <option value="name_asc">Name: A → Z</option>
+                <option value="name_desc">Name: Z → A</option>
+                <option value="code_asc">Code: Asc</option>
+                <option value="code_desc">Code: Desc</option>
+              </select>
+            </div>
+            <div class="filter-group filter-group--btn">
+              <label>&nbsp;</label>
+              <button id="welcomeFilterReset" class="btn-reset">✕ Reset</button>
+            </div>
+          </div>
+          <div class="filters-row calendar-profile-filter-row">
+            <div class="filter-group"><label>Std.Dev</label><select id="welcomeFilterStdDev"><option value="">All</option><option value="lt5">Below 5%</option><option value="5-10">5% – 10%</option><option value="10-15">10% – 15%</option><option value="15-20">15% – 20%</option><option value="gte20">20% and above</option></select></div>
+            <div class="filter-group"><label>Beta</label><select id="welcomeFilterBeta"><option value="">All</option><option value="lt0.8">Below 0.8</option><option value="0.8-1.0">0.8 – 1.0</option><option value="1.0-1.2">1.0 – 1.2</option><option value="gte1.2">1.2 and above</option></select></div>
+            <div class="filter-group"><label>Sharpe</label><select id="welcomeFilterSharpe"><option value="">All</option><option value="lt0">Below 0</option><option value="0-1">0 – 1</option><option value="1-2">1 – 2</option><option value="gte2">2 and above</option></select></div>
+            <div class="filter-group"><label>Jensen</label><select id="welcomeFilterJensen"><option value="">All</option><option value="lt0">Below 0%</option><option value="0-2">0% – 2%</option><option value="2-5">2% – 5%</option><option value="gte5">5% and above</option></select></div>
+            <div class="filter-group"><label>Large Cap (%)</label><select id="welcomeFilterLargeCap"><option value="">All</option><option value="0-25">0 – 25</option><option value="25-50">25 – 50</option><option value="50-75">50 – 75</option><option value="75-100">75 – 100</option></select></div>
+            <div class="filter-group"><label>Mid Cap (%)</label><select id="welcomeFilterMidCap"><option value="">All</option><option value="0-25">0 – 25</option><option value="25-50">25 – 50</option><option value="50-75">50 – 75</option><option value="75-100">75 – 100</option></select></div>
+            <div class="filter-group"><label>Small Cap (%)</label><select id="welcomeFilterSmallCap"><option value="">All</option><option value="0-25">0 – 25</option><option value="25-50">25 – 50</option><option value="50-75">50 – 75</option><option value="75-100">75 – 100</option></select></div>
+            <div class="filter-group"><label>Cash (%)</label><select id="welcomeFilterCash"><option value="">All</option><option value="0-25">0 – 25</option><option value="25-50">25 – 50</option><option value="50-75">50 – 75</option><option value="75-100">75 – 100</option></select></div>
+          </div>
+        </div>
+        
+        <!-- Active filter tags -->
+        <div class="filter-tags" id="welcomeFilterTags"></div>
+        
+        <!-- Results meta -->
+        <div class="results-meta" id="welcomeResultsMeta"></div>
+
+        <!-- Scheme results table -->
+        <div class="table-wrap calendar-year-table-wrap">
+          <table class="nav-table calendar-year-table">
+            <thead id="welcomeTableHead"></thead>
+            <tbody id="welcomeTableBody"></tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="pagination" id="welcomePagination"></div>
+      </div>
+      </div>
+    </div>
+
+    <!-- Vanguard Dashboard (hidden by default) -->
+    <div class="vanguard-dashboard hidden" id="vanguardDashboard">
+      <div class="vanguard-header">
+        <h2>📊 Vanguard Mutual Funds</h2>
+        <button class="btn-close-vanguard" onclick="closeVanguardDashboard()">✕ Close</button>
+      </div>
+      
+      <div class="vanguard-controls">
+        <div class="filter-group filter-wide">
+          <label>Search Funds</label>
+          <input type="text" id="vanguardSearch" placeholder="Search by fund name or symbol…"/>
+        </div>
+        <div class="filter-group">
+          <label>Company</label>
+          <select id="vanguardCompanyFilter">
+            <option value="">All Companies</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Min YTD Return</label>
+          <input type="number" id="vanguardMinYTD" placeholder="0" step="0.01"/>
+        </div>
+        <div class="filter-group">
+          <label>Max YTD Return</label>
+          <input type="number" id="vanguardMaxYTD" placeholder="Any" step="0.01"/>
+        </div>
+        <div class="filter-group">
+          <label>Expense Ratio Max</label>
+          <input type="number" id="vanguardMaxExpense" placeholder="0.50" step="0.01"/>
+        </div>
+        <div class="filter-group">
+          <label>Sort By</label>
+          <select id="vanguardSort">
+            <option value="name">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+            <option value="ytd_asc">YTD (Low-High)</option>
+            <option value="ytd_desc">YTD (High-Low)</option>
+            <option value="expense_asc">Expense (Low-High)</option>
+            <option value="expense_desc">Expense (High-Low)</option>
+            <option value="return_1y_asc">1Y Return (Low-High)</option>
+            <option value="return_1y_desc">1Y Return (High-Low)</option>
+          </select>
+        </div>
+        <div class="vanguard-actions">
+          <button class="btn-refresh-vanguard" onclick="loadVanguardData()">↻ Refresh</button>
+          <button class="btn-export-vanguard" onclick="exportAllVanguardData()">⬇ Export All (Excel)</button>
+        </div>
+      </div>
+      
+      <div class="results-meta" id="vanguardMeta">Loading Vanguard funds…</div>
+      
+      <div class="table-wrap">
+        <table class="nav-table vanguard-table">
+          <colgroup>
+            <col/><col/><col/><col/><col/><col/><col/><col/><col/><col/>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Symbol</th>
+              <th>Fund Name</th>
+              <th>YTD %</th>
+              <th>1Y %</th>
+              <th>3Y %</th>
+              <th>5Y %</th>
+              <th>Expense</th>
+              <th>SEC Yield</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="vanguardTableBody"></tbody>
+        </table>
+      </div>
+      
+      <div class="pagination" id="vanguardPagination"></div>
+    </div>
+
+    <!-- Upvaly Dashboard (hidden by default) -->
+    <div class="upvaly-dashboard hidden" id="upvalyDashboard">
+      <div class="upvaly-header">
+        <h2>📊 Upvaly Dashboard</h2>
+        <button class="btn-close-upvaly" onclick="closeUpvalyDashboard()">✕ Close</button>
+      </div>
+
+      <!-- Internal tab nav (mirrors the sidebar shortcuts) -->
+      <div class="upvaly-tabs" id="upvalyTabs">
+        <button class="upvaly-tab active" data-tab="ipo" onclick="switchUpvalyTab('ipo')">🚀 IPOs</button>
+        <button class="upvaly-tab" data-tab="holidays" onclick="switchUpvalyTab('holidays')">📅 Exchange Holidays</button>
+      </div>
+
+      <!-- IPO PANE -->
+      <div class="upvaly-pane" id="upvalyPaneIpo">
+        <div class="upvaly-controls">
+          <div class="filter-group filter-wide">
+            <label>Search IPOs</label>
+            <input type="text" id="upvalyIpoSearch" placeholder="Search by company or symbol…"/>
+          </div>
+          <div class="filter-group">
+            <label>Type</label>
+            <select id="upvalyIpoTypeFilter"><option value="">All Types</option></select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="upvalyIpoStatusFilter"><option value="">All Statuses</option></select>
+          </div>
+          <div class="filter-group">
+            <label>Sort By</label>
+            <select id="upvalyIpoSort">
+              <option value="listing_desc">Listing Date (Newest)</option>
+              <option value="listing_asc">Listing Date (Oldest)</option>
+              <option value="name">Name (A-Z)</option>
+              <option value="name_desc">Name (Z-A)</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+          <div class="upvaly-actions">
+            <button class="btn-refresh-upvaly" onclick="loadUpvalyIpoData()">↻ Refresh</button>
+            <button class="btn-export-upvaly" onclick="exportAllUpvalyIpoData(this)">⬇ Export All (Excel)</button>
+          </div>
+        </div>
+        <div class="results-meta" id="upvalyIpoMeta">Loading Upvaly IPOs…</div>
+        <div class="table-wrap">
+          <table class="nav-table upvaly-ipo-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Company</th>
+                <th>Symbol</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Price Range</th>
+                <th>Lot Size</th>
+                <th>Open</th>
+                <th>Close</th>
+                <th>Listing</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="upvalyIpoTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="upvalyIpoPagination"></div>
+      </div>
+
+      <!-- HOLIDAYS PANE -->
+      <div class="upvaly-pane hidden" id="upvalyPaneHolidays">
+        <div class="upvaly-controls">
+          <div class="filter-group filter-wide">
+            <label>Search Holidays</label>
+            <input type="text" id="upvalyHolidaySearch" placeholder="Search by description…"/>
+          </div>
+          <div class="filter-group">
+            <label>Type</label>
+            <select id="upvalyHolidayTypeFilter"><option value="">All Types</option></select>
+          </div>
+          <div class="upvaly-actions">
+            <button class="btn-refresh-upvaly" onclick="loadUpvalyHolidayData()">↻ Refresh</button>
+            <button class="btn-export-upvaly" onclick="exportAllUpvalyHolidayData(this)">⬇ Export All (Excel)</button>
+          </div>
+        </div>
+        <div class="results-meta" id="upvalyHolidayMeta">Loading Upvaly exchange holidays…</div>
+        <div class="table-wrap">
+          <table class="nav-table upvaly-holiday-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Closed Exchanges</th>
+                <th>Open Exchanges</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="upvalyHolidayTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="upvalyHolidayPagination"></div>
+      </div>
+    </div>
+
+    <!-- Rule Engine (NAV Ledger) — embedded in-page via iframe so it feels
+         like part of this site rather than a separate destination. Same
+         session/cookies apply automatically since it's same-origin. -->
+    <div class="embedded-dashboard rule-engine-dashboard hidden" id="ruleEngineDashboard">
+      <div class="embedded-header">
+        <h2>🧮 Return CAGR Rule Engine</h2>
+        <button class="btn-close-dashboard" onclick="closeRuleEngineDashboard()">✕ Close</button>
+      </div>
+      <iframe id="ruleEngineFrame" title="Return CAGR Rule Engine"
+              style="width:100%;border:none;border-radius:10px;background:#fff"></iframe>
+    </div>
+
+    <!-- Calendar Year CAGR & Rolling Return — same embedding pattern as the
+         Rule Engine above: same-origin iframe, same session/cookies. -->
+    <div class="embedded-dashboard rule-engine-dashboard hidden" id="calendarCagrDashboard">
+      <div class="embedded-header">
+        <h2>📆 Calendar Year CAGR &amp; Rolling Return</h2>
+        <button class="btn-close-dashboard" onclick="closeCalendarCagrDashboard()">✕ Close</button>
+      </div>
+      <iframe id="calendarCagrFrame" title="Calendar Year CAGR & Rolling Return"
+              style="width:100%;border:none;border-radius:10px;background:#fff"></iframe>
+    </div>
+
+    <!-- Calendar Year SIP & Lumpsum — same embedding pattern. -->
+    <div class="embedded-dashboard rule-engine-dashboard hidden" id="calendarSipDashboard">
+      <div class="embedded-header">
+        <h2>🧾 Calendar Year SIP &amp; Lumpsum</h2>
+        <button class="btn-close-dashboard" onclick="closeCalendarSipDashboard()">✕ Close</button>
+      </div>
+      <iframe id="calendarSipFrame" title="Calendar Year SIP & Lumpsum"
+              style="width:100%;border:none;border-radius:10px;background:#fff"></iframe>
+    </div>
+
+    <!-- Fund View -->
+    <div class="fund-view hidden" id="fundView">
+
+      <!-- Fund header -->
+      <div class="fund-header">
+        <div class="fund-header-left">
+          <h2 id="fundTitle">—</h2>
+          <div class="fund-meta-row">
+            <span class="fund-meta" id="fundMeta"></span>
+            <span class="live-badge"><span class="live-dot"></span>Live NAV</span>
+          </div>
+        </div>
+        <div class="fund-header-actions">
+          <button class="btn-refresh" id="btnExportFundAll">⬇ Export All (Excel)</button>
+          <button class="btn-refresh" id="btnRefresh">↺ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="filters-row">
+          <div class="filter-group filter-wide">
+            <label>Scheme Name</label>
+            <input type="text" id="filterSearch" placeholder="e.g. Growth, Direct, IDCW…"/>
+          </div>
+          <div class="filter-group">
+            <label>Scheme Code</label>
+            <input type="text" id="filterCode" placeholder="e.g. 119551"/>
+          </div>
+          <div class="filter-group">
+            <label>Min NAV (₹)</label>
+            <input type="number" id="filterMinNav" placeholder="0" min="0"/>
+          </div>
+          <div class="filter-group">
+            <label>Max NAV (₹)</label>
+            <input type="number" id="filterMaxNav" placeholder="Any" min="0"/>
+          </div>
+        </div>
+        <div class="filters-row">
+          <div class="filter-group">
+            <label>Scheme Type</label>
+            <select id="filterSchemeType"><option value="">All Types</option></select>
+          </div>
+          <div class="filter-group">
+            <label>Plan</label>
+            <select id="filterPlan"><option value="">All Plans</option></select>
+          </div>
+          <div class="filter-group">
+            <label>Option</label>
+            <select id="filterOption"><option value="">All Options</option></select>
+          </div>
+          <div class="filter-group filter-wide">
+            <label>Category</label>
+            <select id="filterCategory"><option value="">All Categories</option></select>
+          </div>
+          <div class="filter-group">
+            <label>Sort By</label>
+            <select id="filterSort">
+              <option value="">Default</option>
+              <option value="nav_desc">NAV: High → Low</option>
+              <option value="nav_asc">NAV: Low → High</option>
+              <option value="name_asc">Name: A → Z</option>
+              <option value="name_desc">Name: Z → A</option>
+              <option value="code_asc">Code: Asc</option>
+              <option value="code_desc">Code: Desc</option>
+            </select>
+          </div>
+          <div class="filter-group filter-group--btn">
+            <label>&nbsp;</label>
+            <button id="filterReset" class="btn-reset">✕ Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active filter tags -->
+      <div class="filter-tags" id="filterTags"></div>
+
+      <!-- Results meta -->
+      <div class="results-meta" id="resultsMeta"></div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table class="nav-table">
+          <colgroup>
+            <col/><col/><col/><col/><col/><col/><col/><col/><col/><col/>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Code</th>
+              <th>Scheme Name</th>
+              <th>Plan</th>
+              <th>Option</th>
+              <th>ISIN Growth</th>
+              <th>Launch Date</th>
+              <th class="num">NAV (₹)</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+
+    </div>
+  </main>
+
+  <!-- VIEW MODAL -->
+  <div class="modal-backdrop hidden" id="modalBackdrop" onclick="closeModal(event)">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon">📊</span>
+          <div>
+            <div class="modal-title" id="modalTitle">Scheme Details</div>
+            <div class="modal-sub" id="modalSub"></div>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <a class="btn-api-link" id="modalApiLink" href="#" target="_blank" rel="noopener">Open API URL ↗</a>
+        <button class="btn-api-link" id="modalExportReturnsBtn" onclick="exportSchemeReturns()">📥 Export All Data</button>
+        <button class="btn-modal-close" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

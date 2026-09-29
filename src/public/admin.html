@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin · AMFI NAV Dashboard</title>
+  <link rel="stylesheet" href="/css/auth.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="admin-page">
+
+  <div class="admin-topbar">
+    <div class="admin-brand">
+      <div class="logo-icon">₹</div>
+      <div>
+        <div class="admin-brand-title">Admin Console</div>
+        <div class="admin-brand-sub">User &amp; access management</div>
+      </div>
+    </div>
+    <div class="admin-topbar-right">
+      <a class="link-back" href="/">← Back to Dashboard</a>
+      <div class="user-chip">
+        <div class="avatar" id="avatarInitial">A</div>
+        <span class="uname" id="topUsername">—</span>
+        <span class="role-badge admin">Admin</span>
+      </div>
+      <button class="btn-logout" id="btnLogout">Log Out</button>
+    </div>
+  </div>
+
+  <div class="admin-body">
+    <div class="admin-header">
+      <h1>User Management</h1>
+      <p>Create users, change roles, and reset any user's password. Only Admins can edit scheme Launch Dates — everyone else has view-only access.</p>
+    </div>
+
+    <div class="admin-stats">
+      <div class="admin-stat-card">
+        <div class="admin-stat-num" id="statTotal">—</div>
+        <div class="admin-stat-label">Total Users</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-num" id="statAdmins">—</div>
+        <div class="admin-stat-label">Admins</div>
+      </div>
+      <div class="admin-stat-card">
+        <div class="admin-stat-num" id="statUsers">—</div>
+        <div class="admin-stat-label">Regular Users</div>
+      </div>
+    </div>
+
+    <div class="admin-panel">
+      <div class="admin-panel-header">
+        <h2>All Users</h2>
+        <button class="btn-primary" id="btnAddUser">+ Add User</button>
+      </div>
+      <div class="table-scroll">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>ID</th>
+            <th>Role</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody">
+          <tr><td colspan="5" class="empty-state">Loading users…</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="admin-header" style="margin-top:36px;">
+      <h1>Static Fund Data</h1>
+      <p>Scheme-level static details (risk measures, market cap split, AMFI sectors, exit load) stored in the database. Only Admins can add, edit, or delete records here — changes are written straight to <code>fund-static-data.sqlite</code>.</p>
+    </div>
+
+    <div class="admin-panel">
+      <div class="admin-panel-header">
+        <h2>All Records</h2>
+        <div class="admin-panel-actions">
+          <input type="text" id="staticSearch" placeholder="Search scheme name or category…"
+            style="padding:8px 12px; border:1.5px solid var(--border2); border-radius:var(--radius-sm); font-family:var(--font); font-size:13px; background:var(--surface2);"/>
+          <button class="btn-mini" id="btnDownloadTemplate">⬇ Download Demo</button>
+          <button class="btn-mini" id="btnExportExcel">⬇ Export All</button>
+          <button class="btn-mini" id="btnUploadExcel">⬆ Upload Excel</button>
+          <input type="file" id="staticExcelFile" accept=".xlsx" style="display:none;"/>
+          <button class="btn-primary" id="btnAddStatic">+ Add Record</button>
+        </div>
+      </div>
+      <div class="table-scroll">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Scheme Name</th>
+            <th>Category</th>
+            <th>Exit Load</th>
+            <th>AMFI Sectors</th>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="staticBody">
+          <tr><td colspan="6" class="empty-state">Loading records…</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div class="modal-backdrop hidden" id="addUserModal">
+    <div class="small-modal">
+      <h3>Add New User</h3>
+      <div class="modal-sub">Create an Admin or a view-only User account.</div>
+      <div class="login-field">
+        <label for="newUsername">Username</label>
+        <input type="text" id="newUsername" placeholder="e.g. rahul"/>
+      </div>
+      <div class="login-field">
+        <label for="newPassword">Password</label>
+        <input type="password" id="newPassword" placeholder="Min. 6 characters"/>
+      </div>
+      <div class="login-field">
+        <label for="newRole">Role</label>
+        <select id="newRole" style="width:100%; padding:11px 13px; border:1.5px solid var(--border2); border-radius:var(--radius-sm); font-family:var(--font); font-size:14px; background:var(--surface2);">
+          <option value="user">User (view only)</option>
+          <option value="admin">Admin (can edit)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-mini" id="cancelAddUser">Cancel</button>
+        <button class="btn-primary" id="confirmAddUser">Create User</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div class="modal-backdrop hidden" id="pwdModal">
+    <div class="small-modal">
+      <h3>Reset Password</h3>
+      <div class="modal-sub">Set a new password for <b id="pwdModalUsername"></b>.</div>
+      <div class="login-field">
+        <label for="pwdNewPassword">New Password</label>
+        <input type="password" id="pwdNewPassword" placeholder="Min. 6 characters"/>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-mini" id="cancelPwd">Cancel</button>
+        <button class="btn-primary" id="confirmPwd">Update Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Static Fund Data Modal -->
+  <div class="modal-backdrop hidden" id="staticModal">
+    <div class="small-modal modal-wide">
+      <h3 id="staticModalTitle">Add Static Fund Record</h3>
+      <div class="modal-sub">Fields you leave empty are simply not stored for this scheme.</div>
+
+      <div class="login-field">
+        <label for="staticSchemeName">Scheme Name *</label>
+        <input type="text" id="staticSchemeName" placeholder="e.g. Axis Bluechip Fund - Direct Plan"/>
+      </div>
+
+      <div class="login-field">
+        <label for="staticCategory">Category</label>
+        <input type="text" id="staticCategory" placeholder="e.g. Large Cap Fund"/>
+      </div>
+
+      <div class="login-field">
+        <label>AMFI Sectors <span class="field-hint">(sector name / percentage)</span></label>
+        <div class="kv-rows" id="sectorRows"></div>
+        <button type="button" class="btn-mini" id="addSectorRow">+ Add Sector</button>
+      </div>
+
+      <div class="login-field">
+        <label>Risk Measures <span class="field-hint">(name / value pairs)</span></label>
+        <div class="kv-rows" id="riskRows"></div>
+        <button type="button" class="btn-mini" id="addRiskRow">+ Add Measure</button>
+      </div>
+
+      <div class="login-field">
+        <label>Market Capitalisation <span class="field-hint">(name / percentage pairs)</span></label>
+        <div class="kv-rows" id="marketRows"></div>
+        <button type="button" class="btn-mini" id="addMarketRow">+ Add Allocation</button>
+      </div>
+
+      <div class="login-field">
+        <label>Exit Load <span class="field-hint">(condition / value rows)</span></label>
+        <div class="kv-rows" id="exitLoadRows"></div>
+        <button type="button" class="btn-mini" id="addExitLoadRow">+ Add Exit Load Rule</button>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-mini" id="cancelStatic">Cancel</button>
+        <button class="btn-primary" id="confirmStatic">Save Record</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

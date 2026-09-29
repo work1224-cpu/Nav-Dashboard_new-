@@ -1,0 +1,28 @@
+{
+  "name": "nav-dashboard",
+  "version": "1.0.0",
+  "description": "AMFI NAV Dashboard - All Mutual Fund Schemes",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --max-old-space-size=4096 src/server.js",
+    "dev": "nodemon --exec \"node --max-old-space-size=4096\" --watch src --ignore data/returns-cache.json --ignore data/users.json --ignore data/sessions.json --ignore src/nav-ledger/data/master.json --ignore src/nav-ledger/data/meta.json --ignore src/nav-ledger/data/returns-cache.json --ignore \"src/nav-ledger/data/returns-cache.json.tmp\" --ignore src/nav-ledger/data/calendar-cache.json --ignore \"src/nav-ledger/data/calendar-cache.json.tmp\" src/server.js",
+    "nav-ledger:build-data": "node --max-old-space-size=4096 src/nav-ledger/scripts/build-data.js",
+    "fund-static-data:import": "node src/scripts/importFundStaticData.js"
+  },
+  "dependencies": {
+    "axios": "^1.18.1",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "cheerio": "^1.2.0",
+    "csv-parser": "^3.2.1",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "express-session": "^1.19.0",
+    "node-cron": "^4.6.0",
+    "node-fetch": "^3.3.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
