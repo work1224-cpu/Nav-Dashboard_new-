@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: nav-dashboard-new
+    runtime: node
+    buildCommand: npm install && npm run nav-ledger:build-data
+    startCommand: npm start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true

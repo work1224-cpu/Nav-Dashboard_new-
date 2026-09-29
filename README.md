@@ -248,6 +248,23 @@ once a day at **9:30 PM IST** (offset half an hour from the main dashboard's
 own 9:00 PM full sync, so the two independent data pipelines never compete for
 CPU/network at the same moment).
 
+### Render deployment
+
+The generated Rule Engine dataset is intentionally excluded from Git because
+`master.json` is several hundred MB. The Render build must create it before the
+service starts. Use these service settings (or deploy the included
+`render.yaml` as a Blueprint):
+
+```text
+Build Command: npm install && npm run nav-ledger:build-data
+Start Command: npm start
+Health Check Path: /login
+```
+
+Set a strong `SESSION_SECRET` in Render Environment Variables. A Render
+instance without persistent storage will need to rebuild this dataset after a
+fresh instance is created.
+
 ### Routes this adds
 
 | Route | Purpose |
